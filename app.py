@@ -1,41 +1,25 @@
-from flask import Flask, render_template, request
-from calculator.investment import InvestmentCalculator
-from utils.validators import is_positive_number
-
+from flask import Flask, render_template, request, jsonify
+from calculator.investment import calculate_investment  # Updated import statement
+ 
 app = Flask(__name__)
 
 @app.route('/')
-def index():
+def home():
     return render_template('index.html')
 
 @app.route('/calculate', methods=['POST'])
 def calculate():
     try:
-        # Get form data
         initial_investment = float(request.form['initial_investment'])
-        contribution_amount = float(request.form['contribution_amount'])
         contribution_type = request.form['contribution_type']
-        
-        # Capture all the annual return rates as a list
-        rates = request.form.getlist('rates[]')
-        rates = [float(rate) for rate in rates if is_positive_number(rate)]
+        contribution_amount = float(request.form['contribution_amount'])
+        rates = [float(rate) for rate in request.form.getlist('rates[]')]
 
-        # Input validation
-        if not (is_positive_number(initial_investment) and is_positive_number(contribution_amount)):
-            return render_template('index.html', error="All inputs must be positive numbers.")
-        
-        if len(rates) == 0:
-            return render_template('index.html', error="Please provide at least one annual return rate.")
+        final_value = calculate_investment(initial_investment, contribution_type, contribution_amount, rates)
 
-        # Perform calculation
-        calculator = InvestmentCalculator(initial_investment, rates, contribution_amount, contribution_type)
-        final_value = calculator.calculate_final_value()
-
-        # Pass the result to the result page
-        return render_template('result.html', final_value=final_value)
-
-    except ValueError:
-        return render_template('index.html', error="Invalid input. Please enter valid numbers.")
+        return jsonify({'success': True, 'final_value': final_value})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)
